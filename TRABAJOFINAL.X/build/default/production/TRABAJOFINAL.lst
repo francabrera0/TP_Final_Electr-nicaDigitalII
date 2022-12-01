@@ -1,0 +1,1004 @@
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001 ;*******************************************************************************
+                      00002 ;                                                                              *
+                      00003 ;    Filename: TRABAJOFINAL                                                    *
+                      00004 ;    Date: 07/05/2022                                                          *
+                      00005 ;    File Version: 2.0.0                                                       *
+                      00006 ;    Author: Francisco Cabrera                                                 *
+                      00007 ;    Company: FCEFyN                                                           *
+                      00008 ;    Description: Decodificación de teclado y muestra de valores por display y *                        
+                                                       *
+                      00009 ;                 comunicacion serie                                           *
+                      00010 ;*******************************************************************************
+                      00011         
+                      00012         LIST        P=16F887
+                      00013         #include    <p16f887.inc>
+                      00001         LIST
+                      00002 
+                      00003 ;==========================================================================
+                      00004 ; Build date : Jan 06 2020
+                      00005 ;  MPASM PIC16F887 processor include
+                      00006 ; 
+                      00007 ;  (c) Copyright 1999-2020 Microchip Technology, All rights reserved
+                      00008 ;==========================================================================
+                      00009 
+                      00810         LIST
+                      00014         
+2007   2CE4           00015     __CONFIG    _CONFIG1, _INTOSCIO & _WDT_OFF & _PWRTE_ON & _MCLRE_ON & _BOR_OFF & _LVP_OFF
+                      00016         
+  00000020            00017 AUXC    EQU     0X20     ;Registro auxiliar para multiplexar los displays
+  00000021            00018 AUXD    EQU     0X21     ;Registro para decodificación de teclado
+  00000022            00019 REG3    EQU     0X22     ;Registro para guardar el valor que se muestra por el display 3
+  00000023            00020 REG2    EQU     0X23     ;Registro para guardar el valor que se muestra por el display 2
+  00000024            00021 REG1    EQU     0X24     ;Registro para guardar el valor que se muestra por el display 1
+  00000025            00022 REG0    EQU     0X25     ;Registro para guardar el valor que se muestra por el display 0
+  00000026            00023 DATO    EQU     0X26     ;Registro para almacenar el dato ingresado por el teclado
+  00000027            00024 WTEMP   EQU     0X27     ;Registro para guardar W cuando entra a la ISR
+  00000028            00025 STEMP   EQU     0X28     ;Registro para guardar STATUS cuando entra a la ISR
+  00000029            00026 RTEMP   EQU     0X29     ;Registro para almacenar temporalmente el valor a mostrar en el display
+  0000002A            00027 DEB0    EQU     0X2A     ;Registro auxiliar para realizar el DEBOUNCE   
+  0000002B            00028 DEB1    EQU     0X2B     ;Registro auxiliar para realizar el DEBOUNCE
+  0000002C            00029 REG3A   EQU     0X2C     ;Registro para enviar datos por TX
+  0000002D            00030 REG2A   EQU     0X2D     ;Registro para enviar datos por TX
+  0000002E            00031 REG1A   EQU     0X2E     ;Registro para enviar datos por TX
+  0000002F            00032 REG0A   EQU     0X2F     ;Registro para enviar datos por TX
+  00000030            00033 DATOA   EQU     0X30     ;Registro auxiliar para actualizar registros REGxA
+                      00034 
+                      00035         ORG         0X00
+0000   2???           00036         GOTO        MAIN
+                      00037         
+                      00038         ORG         0X04
+                      00039 
+0004   00A7           00040         MOVWF       WTEMP  
+0005   0E03           00041         SWAPF       STATUS,W
+0006   00A8           00042         MOVWF       STEMP   ;Guarda el contexto del procesador
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  2
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00043         
+0007   1283 1303      00044         BANKSEL     INTCON
+0009   188B           00045         BTFSC       INTCON,INTF
+000A   2???           00046         GOTO        INTO
+                      00047         
+000B   1283 1303      00048         BANKSEL     STATUS
+000D   1003           00049         BCF         STATUS,C
+000E   1BA0           00050         BTFSC       AUXC,7
+000F   1403           00051         BSF         STATUS,C
+0010   0DA0           00052         RLF         AUXC,1
+0011   0820           00053         MOVF        AUXC,W
+0012   0087           00054         MOVWF       PORTC
+                      00055         
+0013   1820           00056         BTFSC       AUXC,0
+0014   2???           00057         GOTO        SAVE3
+0015   18A0           00058         BTFSC       AUXC,1
+0016   2???           00059         GOTO        SAVE2
+0017   1920           00060         BTFSC       AUXC,2
+0018   2???           00061         GOTO        SAVE1
+0019   2???           00062         GOTO        SAVE0
+001A   0822           00063 SAVE3   MOVF        REG3,W
+001B   2???           00064         GOTO        NEXT2
+001C   0823           00065 SAVE2   MOVF        REG2,W
+001D   2???           00066         GOTO        NEXT2
+001E   0824           00067 SAVE1   MOVF        REG1,W
+001F   2???           00068         GOTO        NEXT2
+0020   0825           00069 SAVE0   MOVF        REG0,W
+0021   00A9           00070 NEXT2   MOVWF       RTEMP
+0022   3000           00071         MOVLW       0X00
+0023   0087           00072         MOVWF       PORTC
+0024   0829           00073         MOVF        RTEMP,W
+0025   0085           00074         MOVWF       PORTA
+0026   0820           00075         MOVF        AUXC,W
+0027   0087           00076         MOVWF       PORTC
+                      00077         
+0028   1283 1303      00078         BANKSEL     INTCON
+002A   110B           00079         BCF         INTCON,2
+002B   1283 1303      00080         BANKSEL     TMR0
+002D   3064           00081         MOVLW       .100
+002E   0081           00082         MOVWF       TMR0
+002F   0E28           00083         SWAPF       STEMP,W
+0030   0083           00084         MOVWF       STATUS
+0031   0EA7           00085         SWAPF       WTEMP,1
+0032   0E27           00086         SWAPF       WTEMP,W
+0033   0009           00087         RETFIE
+                      00088         
+0034                  00089 INTO    
+0034   120C           00090         BCF         PIR1,TXIF
+0035   1283 1303      00091         BANKSEL     TXREG
+0037   082C           00092         MOVF        REG3A,W
+0038   0099           00093         MOVWF       TXREG
+0039   1683 1303      00094         BANKSEL     TXSTA
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  3
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+003B   1C98           00095         BTFSS       TXSTA,TRMT
+003C   2???           00096         GOTO        $-1
+003D   1283 1303      00097         BANKSEL     TXREG
+003F   082D           00098         MOVF        REG2A,W
+0040   0099           00099         MOVWF       TXREG
+0041   1683 1303      00100         BANKSEL     TXSTA
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0043   1C98           00101         BTFSS       TXSTA,TRMT
+0044   2???           00102         GOTO        $-1
+0045   1283 1303      00103         BANKSEL     TXREG
+0047   082E           00104         MOVF        REG1A,W
+0048   0099           00105         MOVWF       TXREG
+0049   1683 1303      00106         BANKSEL     TXSTA
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+004B   1C98           00107         BTFSS       TXSTA,TRMT
+004C   2???           00108         GOTO        $-1
+004D   1283 1303      00109         BANKSEL     TXREG
+004F   082F           00110         MOVF        REG0A,W
+0050   0099           00111         MOVWF       TXREG
+0051   1683 1303      00112         BANKSEL     TXSTA
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0053   1C98           00113         BTFSS       TXSTA,TRMT
+0054   2???           00114         GOTO        $-1
+                      00115 
+0055   1283 1303      00116         BANKSEL     REG0
+0057   303F           00117         MOVLW       0X3F
+0058   00A5           00118         MOVWF       REG0
+0059   00A4           00119         MOVWF       REG1
+005A   00A3           00120         MOVWF       REG2
+005B   00A2           00121         MOVWF       REG3
+005C   01AF           00122         CLRF        REG0A
+005D   01AE           00123         CLRF        REG1A
+005E   01AD           00124         CLRF        REG2A
+005F   01AC           00125         CLRF        REG3A
+                      00126         
+0060   1283 1303      00127         BANKSEL     INTCON
+0062   108B           00128         BCF         INTCON,INTF
+0063   1283 1303      00129         BANKSEL     STATUS
+0065   0E28           00130         SWAPF       STEMP,W
+0066   0083           00131         MOVWF       STATUS
+0067   0EA7           00132         SWAPF       WTEMP,1
+0068   0E27           00133         SWAPF       WTEMP,W
+0069   0009           00134         RETFIE
+                      00135 
+                      00136         
+006A                  00137 MAIN
+006A   1683 1703      00138         BANKSEL     ANSEL
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+006C   0188           00139         CLRF        ANSEL
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+006D   0189           00140         CLRF        ANSELH
+006E   1683 1303      00141         BANKSEL     TRISA
+0070   3001           00142         MOVLW       0X01
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  4
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0071   0086           00143         MOVWF       TRISB
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0072   0185           00144         CLRF        TRISA 
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0073   0187           00145         CLRF        TRISC 
+0074   30F0           00146         MOVLW       0XF0
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0075   0088           00147         MOVWF       TRISD 
+0076   1683 1303      00148         BANKSEL     TXSTA
+0078   3024           00149         MOVLW       0X24
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0079   0098           00150         MOVWF       TXSTA
+007A   1283 1303      00151         BANKSEL     RCSTA
+007C   3080           00152         MOVLW       0X80
+007D   0098           00153         MOVWF       RCSTA
+007E   1683 1703      00154         BANKSEL     BAUDCTL
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0080   1187           00155         BCF         BAUDCTL,BRG16
+0081   1683 1303      00156         BANKSEL     SPBRG
+0083   3019           00157         MOVLW       .25
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0084   0099           00158         MOVWF       SPBRG
+0085   1683 1303      00159         BANKSEL     OPTION_REG
+0087   3084           00160         MOVLW       0X84  
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0088   0081           00161         MOVWF       OPTION_REG
+0089   1683 1303      00162         BANKSEL     PIE1
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+008B   160C           00163         BSF         PIE1,TXIE
+008C   1283 1303      00164         BANKSEL     INTCON
+008E   30B0           00165         MOVLW       0XB0
+008F   008B           00166         MOVWF       INTCON
+0090   1283 1303      00167         BANKSEL     TMR0
+0092   3064           00168         MOVLW       .100
+0093   0081           00169         MOVWF       TMR0  
+0094   3011           00170         MOVLW       0X11  
+0095   00A0           00171         MOVWF       AUXC  
+0096   0087           00172         MOVWF       PORTC
+0097   303F           00173         MOVLW       0X3F
+0098   00A5           00174         MOVWF       REG0
+0099   00A4           00175         MOVWF       REG1
+009A   00A3           00176         MOVWF       REG2
+009B   00A2           00177         MOVWF       REG3
+009C   0085           00178         MOVWF       PORTA
+009D   01AC           00179         CLRF        REG3A
+009E   01AD           00180         CLRF        REG2A
+009F   01AE           00181         CLRF        REG1A
+00A0   01AF           00182         CLRF        REG0A
+                      00183         
+                      00184 
+00A1   30EE           00185 NEXT    MOVLW       0XEE
+00A2   00A1           00186         MOVWF       AUXD  
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00A3   01A6           00187         CLRF        DATO
+00A4   0821           00188 KEYB    MOVF        AUXD,W
+00A5   0088           00189         MOVWF       PORTD 
+00A6   1E08           00190         BTFSS       PORTD,4
+00A7   2???           00191         GOTO        SAVE
+00A8   0AA6           00192         INCF        DATO,1
+00A9   1E88           00193         BTFSS       PORTD,5
+00AA   2???           00194         GOTO        SAVE
+00AB   0AA6           00195         INCF        DATO,1
+00AC   1F08           00196         BTFSS       PORTD,6
+00AD   2???           00197         GOTO        SAVE
+00AE   0AA6           00198         INCF        DATO,1
+00AF   1F88           00199         BTFSS       PORTD,7
+00B0   2???           00200         GOTO        SAVE
+00B1   0AA6           00201         INCF        DATO,1
+                      00202         
+00B2   1403           00203         BSF         STATUS,C 
+00B3   1FA1           00204         BTFSS       AUXD,7
+00B4   1003           00205         BCF         STATUS,C
+00B5   0DA1           00206         RLF         AUXD,1
+00B6   2???           00207         GOTO        KEYB     
+                      00208         
+00B7                  00209 SAVE
+00B7   2???           00210         CALL        DEBOUNCE
+00B8   300F           00211         MOVLW       0X0F
+00B9   05A6           00212         ANDWF       DATO,1
+00BA   0826           00213         MOVF        DATO,W
+00BB   00B0           00214         MOVWF       DATOA
+00BC   2???           00215         CALL        DECOD
+00BD   00A6           00216         MOVWF       DATO
+00BE   2???           00217         CALL        ORDER
+00BF   2???           00218         CALL        RKEY
+00C0   2???           00219         GOTO        NEXT
+                      00220 
+00C1                  00221 DEBOUNCE
+00C1   1283 1303      00222         BANKSEL     INTCON
+00C3   138B           00223         BCF         INTCON,GIE
+00C4   1283 1303      00224         BANKSEL     DEB0
+00C6   30FF           00225         MOVLW       .255
+00C7   00AA           00226         MOVWF       DEB0
+00C8   300C           00227         MOVLW       .12
+00C9   00AB           00228         MOVWF       DEB1
+                      00229         
+00CA   0BAB           00230 LOOP1   DECFSZ      DEB1,1
+00CB   2???           00231         GOTO        LOOP
+00CC   2???           00232         GOTO        RET
+00CD   0BAA           00233 LOOP    DECFSZ      DEB0,1
+00CE   2???           00234         GOTO        LOOP
+00CF   2???           00235         GOTO        LOOP1
+                      00236         
+00D0                  00237 RET     
+00D0   1283 1303      00238         BANKSEL     INTCON
+00D2   178B           00239         BSF         INTCON,GIE
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00D3   1283 1303      00240         BANKSEL     PORTD
+00D5   0008           00241         RETURN
+                      00242         
+00D6                  00243 DECOD
+00D6   0826           00244         MOVF        DATO,W
+00D7   0782           00245         ADDWF       PCL,1
+00D8   343F           00246         RETLW       0X3F
+00D9   3406           00247         RETLW       0X06
+00DA   345B           00248         RETLW       0X5B
+00DB   344F           00249         RETLW       0X4F
+00DC   3466           00250         RETLW       0X66
+00DD   346D           00251         RETLW       0X6D
+00DE   347D           00252         RETLW       0X7D
+00DF   3407           00253         RETLW       0X07
+00E0   347F           00254         RETLW       0X7F
+00E1   3467           00255         RETLW       0X67
+00E2   345F           00256         RETLW       0X5F
+00E3   347C           00257         RETLW       0X7C
+00E4   3439           00258         RETLW       0X39
+00E5   345E           00259         RETLW       0X5E
+00E6   347B           00260         RETLW       0X7B
+00E7   3471           00261         RETLW       0X71
+                      00262         
+00E8                  00263 ORDER 
+00E8   0823           00264         MOVF        REG2,W
+00E9   00A2           00265         MOVWF       REG3
+00EA   0824           00266         MOVF        REG1,W
+00EB   00A3           00267         MOVWF       REG2
+00EC   0825           00268         MOVF        REG0,W
+00ED   00A4           00269         MOVWF       REG1
+00EE   0826           00270         MOVF        DATO,W
+00EF   00A5           00271         MOVWF       REG0
+00F0   082D           00272         MOVF        REG2A,W
+00F1   00AC           00273         MOVWF       REG3A
+00F2   082E           00274         MOVF        REG1A,W
+00F3   00AD           00275         MOVWF       REG2A
+00F4   082F           00276         MOVF        REG0A,W
+00F5   00AE           00277         MOVWF       REG1A
+00F6   0830           00278         MOVF        DATOA,W
+00F7   00AF           00279         MOVWF       REG0A
+                      00280         
+00F8   0008           00281         RETURN  
+                      00282         
+00F9                  00283 RKEY 
+00F9   1283 1303      00284         BANKSEL     INTCON
+00FB   138B           00285         BCF         INTCON,GIE
+00FC   1283 1303      00286         BANKSEL     PORTD
+00FE   3000           00287         MOVLW       0X00
+00FF   0087           00288         MOVWF       PORTC
+0100   30F0           00289 CHECK   MOVLW       0XF0
+0101   0508           00290         ANDWF       PORTD,W
+0102   3CF0           00291         SUBLW       0XF0
+0103   1D03           00292         BTFSS       STATUS,Z
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  7
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0104   2???           00293         GOTO        CHECK
+0105   0820           00294         MOVF        AUXC,W
+0106   0087           00295         MOVWF       PORTC
+0107   1283 1303      00296         BANKSEL     INTCON
+0109   178B           00297         BSF         INTCON,GIE
+010A   1283 1303      00298         BANKSEL     PORTD
+010C   0008           00299         RETURN  
+                      00300 
+2CE4                  00301         END
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  8
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+ABDEN                             00000000
+ABDOVF                            00000007
+ACKDT                             00000005
+ACKEN                             00000004
+ACKSTAT                           00000006
+ADCON0                            0000001F
+ADCON1                            0000009F
+ADCS0                             00000006
+ADCS1                             00000007
+ADDEN                             00000003
+ADFM                              00000007
+ADIE                              00000006
+ADIF                              00000006
+ADON                              00000000
+ADRESH                            0000001E
+ADRESL                            0000009E
+ANS0                              00000000
+ANS1                              00000001
+ANS10                             00000002
+ANS11                             00000003
+ANS12                             00000004
+ANS13                             00000005
+ANS2                              00000002
+ANS3                              00000003
+ANS4                              00000004
+ANS5                              00000005
+ANS6                              00000006
+ANS7                              00000007
+ANS8                              00000000
+ANS9                              00000001
+ANSEL                             00000188
+ANSELH                            00000189
+AUXC                              00000020
+AUXD                              00000021
+BAUDCTL                           00000187
+BCLIE                             00000003
+BCLIF                             00000003
+BF                                00000000
+BRG0                              00000000
+BRG1                              00000001
+BRG10                             00000002
+BRG11                             00000003
+BRG12                             00000004
+BRG13                             00000005
+BRG14                             00000006
+BRG15                             00000007
+BRG16                             00000003
+BRG2                              00000002
+BRG3                              00000003
+BRG4                              00000004
+BRG5                              00000005
+BRG6                              00000006
+BRG7                              00000007
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE  9
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+BRG8                              00000000
+BRG9                              00000001
+BRGH                              00000002
+C                                 00000000
+C1CH0                             00000000
+C1CH1                             00000001
+C1IE                              00000005
+C1IF                              00000005
+C1OE                              00000005
+C1ON                              00000007
+C1OUT                             00000006
+C1POL                             00000004
+C1R                               00000002
+C1RSEL                            00000005
+C1SEN                             00000005
+C2CH0                             00000000
+C2CH1                             00000001
+C2IE                              00000006
+C2IF                              00000006
+C2OE                              00000005
+C2ON                              00000007
+C2OUT                             00000006
+C2POL                             00000004
+C2R                               00000002
+C2REN                             00000004
+C2RSEL                            00000004
+C2SYNC                            00000000
+CCP1CON                           00000017
+CCP1IE                            00000002
+CCP1IF                            00000002
+CCP1M0                            00000000
+CCP1M1                            00000001
+CCP1M2                            00000002
+CCP1M3                            00000003
+CCP1X                             00000005
+CCP1Y                             00000004
+CCP2CON                           0000001D
+CCP2IE                            00000000
+CCP2IF                            00000000
+CCP2M0                            00000000
+CCP2M1                            00000001
+CCP2M2                            00000002
+CCP2M3                            00000003
+CCP2X                             00000005
+CCP2Y                             00000004
+CCPR1                             00000015
+CCPR1H                            00000016
+CCPR1L                            00000015
+CCPR2                             0000001B
+CCPR2H                            0000001C
+CCPR2L                            0000001B
+CHECK                             00000100
+CHS0                              00000002
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 10
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CHS1                              00000003
+CHS2                              00000004
+CHS3                              00000005
+CKE                               00000006
+CKP                               00000004
+CM1CON0                           00000107
+CM2CON0                           00000108
+CM2CON1                           00000109
+CREN                              00000004
+CSRC                              00000007
+D                                 00000005
+DATA_ADDRESS                      00000005
+DATO                              00000026
+DATOA                             00000030
+DC                                00000001
+DC1B0                             00000004
+DC1B1                             00000005
+DC2B0                             00000004
+DC2B1                             00000005
+DEB0                              0000002A
+DEB1                              0000002B
+DEBOUNCE                          000000C1
+DECOD                             000000D6
+D_A                               00000005
+D_NOT_A                           00000005
+ECCPAS                            0000009C
+ECCPAS0                           00000004
+ECCPAS1                           00000005
+ECCPAS2                           00000006
+ECCPASE                           00000007
+EEADR                             0000010D
+EEADRH                            0000010F
+EECON1                            0000018C
+EECON2                            0000018D
+EEDAT                             0000010C
+EEDATA                            0000010C
+EEDATH                            0000010E
+EEIE                              00000004
+EEIF                              00000004
+EEPGD                             00000007
+F                                 00000001
+FERR                              00000002
+FSR                               00000004
+FVREN                             00000000
+GCEN                              00000007
+GIE                               00000007
+GO                                00000001
+GO_DONE                           00000001
+GO_NOT_DONE                       00000001
+HTS                               00000002
+I2C_DATA                          00000005
+I2C_READ                          00000002
+I2C_START                         00000003
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 11
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+I2C_STOP                          00000004
+INDF                              00000000
+INTCON                            0000000B
+INTE                              00000004
+INTEDG                            00000006
+INTF                              00000001
+INTO                              00000034
+IOCB                              00000096
+IOCB0                             00000000
+IOCB1                             00000001
+IOCB2                             00000002
+IOCB3                             00000003
+IOCB4                             00000004
+IOCB5                             00000005
+IOCB6                             00000006
+IOCB7                             00000007
+IRCF0                             00000004
+IRCF1                             00000005
+IRCF2                             00000006
+IRP                               00000007
+KEYB                              000000A4
+LOOP                              000000CD
+LOOP1                             000000CA
+LTS                               00000001
+MAIN                              0000006A
+MC1OUT                            00000007
+MC2OUT                            00000006
+MSK                               00000093
+MSK0                              00000000
+MSK1                              00000001
+MSK2                              00000002
+MSK3                              00000003
+MSK4                              00000004
+MSK5                              00000005
+MSK6                              00000006
+MSK7                              00000007
+NEXT                              000000A1
+NEXT2                             00000021
+NOT_A                             00000005
+NOT_ADDRESS                       00000005
+NOT_BO                            00000000
+NOT_BOR                           00000000
+NOT_DONE                          00000001
+NOT_PD                            00000003
+NOT_POR                           00000001
+NOT_RBPU                          00000007
+NOT_RC8                           00000006
+NOT_T1SYNC                        00000002
+NOT_TO                            00000004
+NOT_TX8                           00000006
+NOT_W                             00000002
+NOT_WRITE                         00000002
+OERR                              00000001
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 12
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+OPTION_REG                        00000081
+ORDER                             000000E8
+OSCCON                            0000008F
+OSCTUNE                           00000090
+OSFIE                             00000007
+OSFIF                             00000007
+OSTS                              00000003
+P                                 00000004
+P1M0                              00000006
+P1M1                              00000007
+PCL                               00000002
+PCLATH                            0000000A
+PCON                              0000008E
+PDC0                              00000000
+PDC1                              00000001
+PDC2                              00000002
+PDC3                              00000003
+PDC4                              00000004
+PDC5                              00000005
+PDC6                              00000006
+PEIE                              00000006
+PEN                               00000002
+PIE1                              0000008C
+PIE2                              0000008D
+PIR1                              0000000C
+PIR2                              0000000D
+PORTA                             00000005
+PORTB                             00000006
+PORTC                             00000007
+PORTD                             00000008
+PORTE                             00000009
+PR2                               00000092
+PRSEN                             00000007
+PS0                               00000000
+PS1                               00000001
+PS2                               00000002
+PSA                               00000003
+PSSAC0                            00000002
+PSSAC1                            00000003
+PSSBD0                            00000000
+PSSBD1                            00000001
+PSTRCON                           0000009D
+PULSR                             00000002
+PULSS                             00000003
+PWM1CON                           0000009B
+R                                 00000002
+RA0                               00000000
+RA1                               00000001
+RA2                               00000002
+RA3                               00000003
+RA4                               00000004
+RA5                               00000005
+RA6                               00000006
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 13
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+RA7                               00000007
+RB0                               00000000
+RB1                               00000001
+RB2                               00000002
+RB3                               00000003
+RB4                               00000004
+RB5                               00000005
+RB6                               00000006
+RB7                               00000007
+RBIE                              00000003
+RBIF                              00000000
+RC0                               00000000
+RC1                               00000001
+RC2                               00000002
+RC3                               00000003
+RC4                               00000004
+RC5                               00000005
+RC6                               00000006
+RC7                               00000007
+RC8_9                             00000006
+RC9                               00000006
+RCD8                              00000000
+RCEN                              00000003
+RCIDL                             00000006
+RCIE                              00000005
+RCIF                              00000005
+RCREG                             0000001A
+RCSTA                             00000018
+RD                                00000000
+RD0                               00000000
+RD1                               00000001
+RD2                               00000002
+RD3                               00000003
+RD4                               00000004
+RD5                               00000005
+RD6                               00000006
+RD7                               00000007
+RE0                               00000000
+RE1                               00000001
+RE2                               00000002
+RE3                               00000003
+READ_WRITE                        00000002
+REG0                              00000025
+REG0A                             0000002F
+REG1                              00000024
+REG1A                             0000002E
+REG2                              00000023
+REG2A                             0000002D
+REG3                              00000022
+REG3A                             0000002C
+RET                               000000D0
+RKEY                              000000F9
+RP0                               00000005
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 14
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+RP1                               00000006
+RSEN                              00000001
+RTEMP                             00000029
+RX9                               00000006
+RX9D                              00000000
+R_NOT_W                           00000002
+R_W                               00000002
+S                                 00000003
+SAVE                              000000B7
+SAVE0                             00000020
+SAVE1                             0000001E
+SAVE2                             0000001C
+SAVE3                             0000001A
+SBOREN                            00000004
+SCKP                              00000004
+SCS                               00000000
+SEN                               00000000
+SENDB                             00000003
+SMP                               00000007
+SPBRG                             00000099
+SPBRGH                            0000009A
+SPEN                              00000007
+SR0                               00000006
+SR1                               00000007
+SRCON                             00000185
+SREN                              00000005
+SSPADD                            00000093
+SSPBUF                            00000013
+SSPCON                            00000014
+SSPCON2                           00000091
+SSPEN                             00000005
+SSPIE                             00000003
+SSPIF                             00000003
+SSPM0                             00000000
+SSPM1                             00000001
+SSPM2                             00000002
+SSPM3                             00000003
+SSPMSK                            00000093
+SSPOV                             00000006
+SSPSTAT                           00000094
+STATUS                            00000003
+STEMP                             00000028
+STRA                              00000000
+STRB                              00000001
+STRC                              00000002
+STRD                              00000003
+STRSYNC                           00000004
+SWDTEN                            00000000
+SYNC                              00000004
+T0CS                              00000005
+T0IE                              00000005
+T0IF                              00000002
+T0SE                              00000004
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 15
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+T1CKPS0                           00000004
+T1CKPS1                           00000005
+T1CON                             00000010
+T1GINV                            00000007
+T1GIV                             00000007
+T1GSS                             00000001
+T1INSYNC                          00000002
+T1OSCEN                           00000003
+T1SYNC                            00000002
+T2CKPS0                           00000000
+T2CKPS1                           00000001
+T2CON                             00000012
+TMR0                              00000001
+TMR0IE                            00000005
+TMR0IF                            00000002
+TMR1                              0000000E
+TMR1CS                            00000001
+TMR1GE                            00000006
+TMR1H                             0000000F
+TMR1IE                            00000000
+TMR1IF                            00000000
+TMR1L                             0000000E
+TMR1ON                            00000000
+TMR2                              00000011
+TMR2IE                            00000001
+TMR2IF                            00000001
+TMR2ON                            00000002
+TOUTPS0                           00000003
+TOUTPS1                           00000004
+TOUTPS2                           00000005
+TOUTPS3                           00000006
+TRISA                             00000085
+TRISA0                            00000000
+TRISA1                            00000001
+TRISA2                            00000002
+TRISA3                            00000003
+TRISA4                            00000004
+TRISA5                            00000005
+TRISA6                            00000006
+TRISA7                            00000007
+TRISB                             00000086
+TRISB0                            00000000
+TRISB1                            00000001
+TRISB2                            00000002
+TRISB3                            00000003
+TRISB4                            00000004
+TRISB5                            00000005
+TRISB6                            00000006
+TRISB7                            00000007
+TRISC                             00000087
+TRISC0                            00000000
+TRISC1                            00000001
+TRISC2                            00000002
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 16
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+TRISC3                            00000003
+TRISC4                            00000004
+TRISC5                            00000005
+TRISC6                            00000006
+TRISC7                            00000007
+TRISD                             00000088
+TRISD0                            00000000
+TRISD1                            00000001
+TRISD2                            00000002
+TRISD3                            00000003
+TRISD4                            00000004
+TRISD5                            00000005
+TRISD6                            00000006
+TRISD7                            00000007
+TRISE                             00000089
+TRISE0                            00000000
+TRISE1                            00000001
+TRISE2                            00000002
+TRISE3                            00000003
+TRMT                              00000001
+TUN0                              00000000
+TUN1                              00000001
+TUN2                              00000002
+TUN3                              00000003
+TUN4                              00000004
+TX8_9                             00000006
+TX9                               00000006
+TX9D                              00000000
+TXD8                              00000000
+TXEN                              00000005
+TXIE                              00000004
+TXIF                              00000004
+TXREG                             00000019
+TXSTA                             00000098
+UA                                00000001
+ULPWUE                            00000005
+ULPWUIE                           00000002
+ULPWUIF                           00000002
+VCFG0                             00000004
+VCFG1                             00000005
+VR0                               00000000
+VR1                               00000001
+VR2                               00000002
+VR3                               00000003
+VRCON                             00000097
+VREN                              00000007
+VROE                              00000006
+VRR                               00000005
+VRSS                              00000004
+W                                 00000000
+WCOL                              00000007
+WDTCON                            00000105
+WDTPS0                            00000001
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 17
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+WDTPS1                            00000002
+WDTPS2                            00000003
+WDTPS3                            00000004
+WPUB                              00000095
+WPUB0                             00000000
+WPUB1                             00000001
+WPUB2                             00000002
+WPUB3                             00000003
+WPUB4                             00000004
+WPUB5                             00000005
+WPUB6                             00000006
+WPUB7                             00000007
+WR                                00000001
+WREN                              00000002
+WRERR                             00000003
+WTEMP                             00000027
+WUE                               00000001
+Z                                 00000002
+_.org_1_003C                      0000003C
+_.org_1_0044                      00000044
+_.org_1_004C                      0000004C
+_.org_1_0054                      00000054
+_BOR21V                           00003EFF
+_BOR40V                           00003FFF
+_BOR4V_BOR21V                     00003EFF
+_BOR4V_BOR40V                     00003FFF
+_BOREN_NSLEEP                     00003EFF
+_BOREN_OFF                        00003CFF
+_BOREN_ON                         00003FFF
+_BOREN_SBODEN                     00003DFF
+_BOR_NSLEEP                       00003EFF
+_BOR_OFF                          00003CFF
+_BOR_ON                           00003FFF
+_BOR_SBODEN                       00003DFF
+_CONFIG1                          00002007
+_CONFIG2                          00002008
+_CPD_OFF                          00003FFF
+_CPD_ON                           00003F7F
+_CP_OFF                           00003FFF
+_CP_ON                            00003FBF
+_DEBUG_OFF                        00003FFF
+_DEBUG_ON                         00001FFF
+_DEVID1                           00002006
+_EC_OSC                           00003FFB
+_EXTRC                            00003FFF
+_EXTRCIO                          00003FFE
+_EXTRC_OSC_CLKOUT                 00003FFF
+_EXTRC_OSC_NOCLKOUT               00003FFE
+_FCMEN_OFF                        000037FF
+_FCMEN_ON                         00003FFF
+_FOSC_EC                          00003FFB
+_FOSC_EXTRC_CLKOUT                00003FFF
+_FOSC_EXTRC_NOCLKOUT              00003FFE
+MPASM 5.87  /HOME/FRANCABRERA/DESKTOP/TP_FIN   5-31-2022  11:45:44         PAGE 18
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+_FOSC_HS                          00003FFA
+_FOSC_INTRC_CLKOUT                00003FFD
+_FOSC_INTRC_NOCLKOUT              00003FFC
+_FOSC_LP                          00003FF8
+_FOSC_XT                          00003FF9
+_HS_OSC                           00003FFA
+_IDLOC0                           00002000
+_IDLOC1                           00002001
+_IDLOC2                           00002002
+_IDLOC3                           00002003
+_IESO_OFF                         00003BFF
+_IESO_ON                          00003FFF
+_INTOSC                           00003FFD
+_INTOSCIO                         00003FFC
+_INTRC_OSC_CLKOUT                 00003FFD
+_INTRC_OSC_NOCLKOUT               00003FFC
+_LP_OSC                           00003FF8
+_LVP_OFF                          00002FFF
+_LVP_ON                           00003FFF
+_MCLRE_OFF                        00003FDF
+_MCLRE_ON                         00003FFF
+_PWRTE_OFF                        00003FFF
+_PWRTE_ON                         00003FEF
+_WDTE_OFF                         00003FF7
+_WDTE_ON                          00003FFF
+_WDT_OFF                          00003FF7
+_WDT_ON                           00003FFF
+_WRT_1FOURTH                      00003BFF
+_WRT_256                          00003DFF
+_WRT_HALF                         000039FF
+_WRT_OFF                          00003FFF
+_XT_OSC                           00003FF9
+__16F887                          00000001
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :    15 reported,     0 suppressed
+
+
